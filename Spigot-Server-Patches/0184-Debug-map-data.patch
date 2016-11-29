@@ -1,11 +1,11 @@
-From 2d1f1287339277306f08ef0e7c9828a0d02be148 Mon Sep 17 00:00:00 2001
+From c3c6e3e57eb8e3cb6eaae8c28be8d54bb4d5926f Mon Sep 17 00:00:00 2001
 From: Spottedleaf <Spottedleaf@users.noreply.github.com>
 Date: Sat, 26 Nov 2016 04:15:02 -0800
 Subject: [PATCH] Debug map data
 
 
 diff --git a/src/main/java/net/minecraft/server/ChunkProviderServer.java b/src/main/java/net/minecraft/server/ChunkProviderServer.java
-index 3b82627..5f96fa4 100644
+index 3b82627..f90d8f4 100644
 --- a/src/main/java/net/minecraft/server/ChunkProviderServer.java
 +++ b/src/main/java/net/minecraft/server/ChunkProviderServer.java
 @@ -5,21 +5,23 @@ import com.google.common.collect.Lists;
@@ -37,7 +37,7 @@ index 3b82627..5f96fa4 100644
  // CraftBukkit end
  
  public class ChunkProviderServer implements IChunkProvider {
-@@ -35,10 +37,30 @@ public class ChunkProviderServer implements IChunkProvider {
+@@ -35,10 +37,28 @@ public class ChunkProviderServer implements IChunkProvider {
      // Paper end
      // Paper start
      protected Chunk lastChunkByPos = null;
@@ -50,8 +50,6 @@ index 3b82627..5f96fa4 100644
 +     * 1 -> put
 +     * 2 -> trim call
 +     * 3 -> clear
-+     * 4 -> Iterator start
-+     * 5 -> Iterator end
 +     */
 +
 +    void addChunkAddRemoveLog(long type, long key) {
@@ -69,7 +67,7 @@ index 3b82627..5f96fa4 100644
              if (lastChunkByPos != null && key == lastChunkByPos.chunkKey) {
                  return lastChunkByPos;
              }
-@@ -47,11 +69,266 @@ public class ChunkProviderServer implements IChunkProvider {
+@@ -47,11 +67,113 @@ public class ChunkProviderServer implements IChunkProvider {
  
          @Override
          public Chunk remove(long key) {
@@ -87,11 +85,14 @@ index 3b82627..5f96fa4 100644
 +        @Override
 +        public Chunk put(long l, Chunk chunk) {
 +            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            if (iterating) {
++            int size = super.size();
++            addChunkAddRemoveLog(1, l);
++            Chunk ret = super.put(l, chunk);
++            /* Ensure that a new entry was added! */
++            if (iterating && size != size()) {
 +                throw new RuntimeException("Modification whilst iterating!");
 +            }
-+            addChunkAddRemoveLog(1, l);
-+            return super.put(l, chunk);
++            return ret;
 +        }
 +
 +        @Override
@@ -151,21 +152,9 @@ index 3b82627..5f96fa4 100644
 +        }
 +
 +        @Override
-+        public int hashCode() {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.hashCode();
-+        }
-+
-+        @Override
 +        public int size() {
 +            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
 +            return super.size();
-+        }
-+
-+        @Override
-+        public Long2ObjectOpenHashMap<Chunk> clone() {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.clone();
 +        }
 +
 +        @Override
@@ -189,154 +178,10 @@ index 3b82627..5f96fa4 100644
 +            addChunkAddRemoveLog(4, 0);
 +            super.clear();
 +        }
-+
-+        @Override
-+        public void putAll(Map<? extends Long, ? extends Chunk> map) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            super.putAll(map);
-+        }
-+
-+        @Override
-+        public boolean remove(Object key, Object value) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.remove(key, value);
-+        }
-+
-+        @Override
-+        public boolean containsKey(Object o) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.containsKey(o);
-+        }
-+
-+        @Override
-+        public boolean equals(Object o) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.equals(o);
-+        }
-+
-+        @Override
-+        public ObjectSet<Map.Entry<Long, Chunk>> entrySet() {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.entrySet();
-+        }
-+
-+        @Override
-+        public String toString() {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.toString();
-+        }
-+
-+        @Override
-+        public void defaultReturnValue(Chunk chunk) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            super.defaultReturnValue(chunk);
-+        }
-+
-+        @Override
-+        public Chunk get(Object o) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.get(o);
-+        }
-+
-+        @Override
-+        public boolean rehash() {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.rehash();
-+        }
-+
-+        @Override
-+        public int growthFactor() {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.growthFactor();
-+        }
-+
-+        @Override
-+        public void growthFactor(int i) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            super.growthFactor(i);
-+        }
-+
-+        @Override
-+        public Chunk get(Long aLong) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.get(aLong);
-+        }
-+
-+        @Override
-+        public Chunk put(Long aLong, Chunk chunk) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.put(aLong, chunk);
-+        }
-+
-+        @Override
-+        public boolean replace(Long key, Chunk oldValue, Chunk newValue) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.replace(key, oldValue, newValue);
-+        }
-+
-+        @Override
-+        public void forEach(BiConsumer<? super Long, ? super Chunk> action) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            super.forEach(action);
-+        }
-+
-+        @Override
-+        public void replaceAll(BiFunction<? super Long, ? super Chunk, ? extends Chunk> function) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            super.replaceAll(function);
-+        }
-+
-+        @Override
-+        public Chunk compute(Long key, BiFunction<? super Long, ? super Chunk, ? extends Chunk> remappingFunction) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.compute(key, remappingFunction);
-+        }
-+
-+        @Override
-+        public Chunk computeIfAbsent(Long key, Function<? super Long, ? extends Chunk> mappingFunction) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.computeIfAbsent(key, mappingFunction);
-+        }
-+
-+        @Override
-+        public Chunk computeIfPresent(Long key, BiFunction<? super Long, ? super Chunk, ? extends Chunk> remappingFunction) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.computeIfPresent(key, remappingFunction);
-+        }
-+
-+        @Override
-+        public Chunk getOrDefault(Object key, Chunk defaultValue) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.getOrDefault(key, defaultValue);
-+        }
-+
-+        @Override
-+        public Chunk merge(Long key, Chunk value, BiFunction<? super Chunk, ? super Chunk, ? extends Chunk> remappingFunction) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.merge(key, value, remappingFunction);
-+        }
-+
-+        @Override
-+        public Chunk putIfAbsent(Long key, Chunk value) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.putIfAbsent(key, value);
-+        }
-+
-+        @Override
-+        public Chunk replace(Long key, Chunk value) {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.replace(key, value);
-+        }
-+
-+        @Override
-+        public Chunk defaultReturnValue() {
-+            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
-+            return super.defaultReturnValue();
-+        }
      }; // CraftBukkit
      // Paper end
      public final WorldServer world;
-@@ -62,9 +339,9 @@ public class ChunkProviderServer implements IChunkProvider {
+@@ -62,9 +184,9 @@ public class ChunkProviderServer implements IChunkProvider {
          this.chunkGenerator = chunkgenerator;
      }
  
@@ -348,7 +193,7 @@ index 3b82627..5f96fa4 100644
  
      public void unload(Chunk chunk) {
          if (this.world.worldProvider.c(chunk.locX, chunk.locZ)) {
-@@ -76,13 +353,16 @@ public class ChunkProviderServer implements IChunkProvider {
+@@ -76,13 +198,16 @@ public class ChunkProviderServer implements IChunkProvider {
  
      public void b() {
          ObjectIterator objectiterator = this.chunks.values().iterator();
@@ -370,7 +215,7 @@ index 3b82627..5f96fa4 100644
      }
  
      @Nullable
-@@ -292,24 +572,28 @@ public class ChunkProviderServer implements IChunkProvider {
+@@ -292,24 +417,28 @@ public class ChunkProviderServer implements IChunkProvider {
          final int autoSaveLimit = world.paperConfig.maxAutoSaveChunksPerTick;
          // Paper end
          Iterator iterator = this.chunks.values().iterator();
@@ -412,7 +257,7 @@ index 3b82627..5f96fa4 100644
          return true;
      }
  
-@@ -343,11 +627,16 @@ public class ChunkProviderServer implements IChunkProvider {
+@@ -343,11 +472,16 @@ public class ChunkProviderServer implements IChunkProvider {
              long unloadAfter = world.paperConfig.delayChunkUnloadsBy;
              if (unloadAfter > 0) {
                  //noinspection Convert2streamapi
