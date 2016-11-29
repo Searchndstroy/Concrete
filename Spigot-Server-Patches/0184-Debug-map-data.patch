@@ -1,0 +1,555 @@
+From 2d1f1287339277306f08ef0e7c9828a0d02be148 Mon Sep 17 00:00:00 2001
+From: Spottedleaf <Spottedleaf@users.noreply.github.com>
+Date: Sat, 26 Nov 2016 04:15:02 -0800
+Subject: [PATCH] Debug map data
+
+
+diff --git a/src/main/java/net/minecraft/server/ChunkProviderServer.java b/src/main/java/net/minecraft/server/ChunkProviderServer.java
+index 3b82627..5f96fa4 100644
+--- a/src/main/java/net/minecraft/server/ChunkProviderServer.java
++++ b/src/main/java/net/minecraft/server/ChunkProviderServer.java
+@@ -5,21 +5,23 @@ import com.google.common.collect.Lists;
+ import com.google.common.collect.Sets;
+ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
++import it.unimi.dsi.fastutil.longs.LongArrayList;
++import it.unimi.dsi.fastutil.longs.LongSet;
++import it.unimi.dsi.fastutil.objects.ObjectCollection;
+ import it.unimi.dsi.fastutil.objects.ObjectIterator;
+ import java.io.IOException;
+-import java.util.ArrayList;
+-import java.util.Collection;
+-import java.util.Iterator;
+-import java.util.List;
+-import java.util.Set;
++import java.util.*;
++import java.util.function.*;
+ import javax.annotation.Nullable;
+ import com.destroystokyo.paper.exception.ServerInternalException;
++import it.unimi.dsi.fastutil.objects.ObjectSet;
+ import org.apache.logging.log4j.LogManager;
+ import org.apache.logging.log4j.Logger;
+ 
+ // CraftBukkit start
+ import org.bukkit.craftbukkit.chunkio.ChunkIOExecutor;
+ import org.bukkit.event.world.ChunkUnloadEvent;
++import org.spigotmc.AsyncCatcher;
+ // CraftBukkit end
+ 
+ public class ChunkProviderServer implements IChunkProvider {
+@@ -35,10 +37,30 @@ public class ChunkProviderServer implements IChunkProvider {
+     // Paper end
+     // Paper start
+     protected Chunk lastChunkByPos = null;
+-    public Long2ObjectOpenHashMap<Chunk> chunks = new Long2ObjectOpenHashMap<Chunk>(8192) {
++
++    public final LongArrayList chunkAddRemoveLog = new LongArrayList(8192 * 16); /* If it is a map fault, then we can use this log to reproduce it */
++
++    /*
++     * 0 -> remove
++     * 1 -> put
++     * 2 -> trim call
++     * 3 -> clear
++     * 4 -> Iterator start
++     * 5 -> Iterator end
++     */
++
++    void addChunkAddRemoveLog(long type, long key) {
++        chunkAddRemoveLog.add(type);
++        chunkAddRemoveLog.add(key);
++    }
++
++    public boolean iterating = false;
++
++    public Long2ObjectOpenHashMap<Chunk> chunks = new Long2ObjectOpenHashMap<Chunk>(8192) { /* Concrete - Block all access from chunks publicly */
+ 
+         @Override
+         public Chunk get(long key) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
+             if (lastChunkByPos != null && key == lastChunkByPos.chunkKey) {
+                 return lastChunkByPos;
+             }
+@@ -47,11 +69,266 @@ public class ChunkProviderServer implements IChunkProvider {
+ 
+         @Override
+         public Chunk remove(long key) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            if (iterating) {
++                throw new RuntimeException("Modification whilst iterating!");
++            }
+             if (lastChunkByPos != null && key == lastChunkByPos.chunkKey) {
+                 lastChunkByPos = null;
+             }
++            addChunkAddRemoveLog(0, key);
+             return super.remove(key);
+         }
++
++        @Override
++        public Chunk put(long l, Chunk chunk) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            if (iterating) {
++                throw new RuntimeException("Modification whilst iterating!");
++            }
++            addChunkAddRemoveLog(1, l);
++            return super.put(l, chunk);
++        }
++
++        @Override
++        protected void rehash(int i) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            super.rehash(i);
++        }
++
++        @Override
++        public boolean containsKey(long l) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.containsKey(l);
++        }
++
++        @Override
++        public boolean containsValue(Object o) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.containsValue(o);
++        }
++
++        @Override
++        public boolean isEmpty() {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.isEmpty();
++        }
++
++        @Override
++        public Chunk remove(Object o) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.remove(o);
++        }
++
++        @Override
++        public boolean trim() {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            if (iterating) {
++                throw new RuntimeException("Modification whilst iterating!");
++            }
++            addChunkAddRemoveLog(3, 0);
++            return super.trim();
++        }
++
++        @Override
++        public FastEntrySet<Chunk> long2ObjectEntrySet() {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.long2ObjectEntrySet();
++        }
++
++        @Override
++        public boolean trim(int i) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            if (iterating) {
++                throw new RuntimeException("Modification whilst iterating!");
++            }
++            addChunkAddRemoveLog(3, i);
++            return super.trim(i);
++        }
++
++        @Override
++        public int hashCode() {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.hashCode();
++        }
++
++        @Override
++        public int size() {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.size();
++        }
++
++        @Override
++        public Long2ObjectOpenHashMap<Chunk> clone() {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.clone();
++        }
++
++        @Override
++        public LongSet keySet() {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.keySet();
++        }
++
++        @Override
++        public ObjectCollection<Chunk> values() {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.values();
++        }
++
++        @Override
++        public void clear() {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            if (iterating) {
++                throw new RuntimeException("Modification whilst iterating!");
++            }
++            addChunkAddRemoveLog(4, 0);
++            super.clear();
++        }
++
++        @Override
++        public void putAll(Map<? extends Long, ? extends Chunk> map) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            super.putAll(map);
++        }
++
++        @Override
++        public boolean remove(Object key, Object value) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.remove(key, value);
++        }
++
++        @Override
++        public boolean containsKey(Object o) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.containsKey(o);
++        }
++
++        @Override
++        public boolean equals(Object o) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.equals(o);
++        }
++
++        @Override
++        public ObjectSet<Map.Entry<Long, Chunk>> entrySet() {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.entrySet();
++        }
++
++        @Override
++        public String toString() {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.toString();
++        }
++
++        @Override
++        public void defaultReturnValue(Chunk chunk) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            super.defaultReturnValue(chunk);
++        }
++
++        @Override
++        public Chunk get(Object o) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.get(o);
++        }
++
++        @Override
++        public boolean rehash() {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.rehash();
++        }
++
++        @Override
++        public int growthFactor() {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.growthFactor();
++        }
++
++        @Override
++        public void growthFactor(int i) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            super.growthFactor(i);
++        }
++
++        @Override
++        public Chunk get(Long aLong) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.get(aLong);
++        }
++
++        @Override
++        public Chunk put(Long aLong, Chunk chunk) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.put(aLong, chunk);
++        }
++
++        @Override
++        public boolean replace(Long key, Chunk oldValue, Chunk newValue) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.replace(key, oldValue, newValue);
++        }
++
++        @Override
++        public void forEach(BiConsumer<? super Long, ? super Chunk> action) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            super.forEach(action);
++        }
++
++        @Override
++        public void replaceAll(BiFunction<? super Long, ? super Chunk, ? extends Chunk> function) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            super.replaceAll(function);
++        }
++
++        @Override
++        public Chunk compute(Long key, BiFunction<? super Long, ? super Chunk, ? extends Chunk> remappingFunction) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.compute(key, remappingFunction);
++        }
++
++        @Override
++        public Chunk computeIfAbsent(Long key, Function<? super Long, ? extends Chunk> mappingFunction) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.computeIfAbsent(key, mappingFunction);
++        }
++
++        @Override
++        public Chunk computeIfPresent(Long key, BiFunction<? super Long, ? super Chunk, ? extends Chunk> remappingFunction) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.computeIfPresent(key, remappingFunction);
++        }
++
++        @Override
++        public Chunk getOrDefault(Object key, Chunk defaultValue) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.getOrDefault(key, defaultValue);
++        }
++
++        @Override
++        public Chunk merge(Long key, Chunk value, BiFunction<? super Chunk, ? super Chunk, ? extends Chunk> remappingFunction) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.merge(key, value, remappingFunction);
++        }
++
++        @Override
++        public Chunk putIfAbsent(Long key, Chunk value) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.putIfAbsent(key, value);
++        }
++
++        @Override
++        public Chunk replace(Long key, Chunk value) {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.replace(key, value);
++        }
++
++        @Override
++        public Chunk defaultReturnValue() {
++            AsyncCatcher.catchOp("Concurrent access!"); /* Concrete - Ensure no concurrent accesses */
++            return super.defaultReturnValue();
++        }
+     }; // CraftBukkit
+     // Paper end
+     public final WorldServer world;
+@@ -62,9 +339,9 @@ public class ChunkProviderServer implements IChunkProvider {
+         this.chunkGenerator = chunkgenerator;
+     }
+ 
+-    public Collection<Chunk> a() {
++    /*public Collection<Chunk> a() {
+         return this.chunks.values();
+-    }
++    }*/
+ 
+     public void unload(Chunk chunk) {
+         if (this.world.worldProvider.c(chunk.locX, chunk.locZ)) {
+@@ -76,13 +353,16 @@ public class ChunkProviderServer implements IChunkProvider {
+ 
+     public void b() {
+         ObjectIterator objectiterator = this.chunks.values().iterator();
++        this.iterating = true;
++        try {
++            while (objectiterator.hasNext()) {
++                Chunk chunk = (Chunk) objectiterator.next();
+ 
+-        while (objectiterator.hasNext()) {
+-            Chunk chunk = (Chunk) objectiterator.next();
+-
+-            this.unload(chunk);
++                this.unload(chunk);
++            }
++        } finally {
++            this.iterating = false;
+         }
+-
+     }
+ 
+     @Nullable
+@@ -292,24 +572,28 @@ public class ChunkProviderServer implements IChunkProvider {
+         final int autoSaveLimit = world.paperConfig.maxAutoSaveChunksPerTick;
+         // Paper end
+         Iterator iterator = this.chunks.values().iterator();
+-        while (iterator.hasNext()) {
+-            Chunk chunk = (Chunk) iterator.next();
+-            // CraftBukkit end
++        this.iterating = true;
++        try {
++            while (iterator.hasNext()) {
++                Chunk chunk = (Chunk) iterator.next();
++                // CraftBukkit end
+ 
+-            if (flag) {
+-                this.saveChunkNOP(chunk);
+-            }
++                if (flag) {
++                    this.saveChunkNOP(chunk);
++                }
+ 
+-            if (chunk.a(flag)) {
+-                this.saveChunk(chunk);
+-                chunk.f(false);
+-                ++i;
+-                if (!flag && i >= autoSaveLimit) { // Spigot - // Paper - Incremental Auto Save - cap max per tick
+-                    return false;
++                if (chunk.a(flag)) {
++                    this.saveChunk(chunk);
++                    chunk.f(false);
++                    ++i;
++                    if (!flag && i >= autoSaveLimit) { // Spigot - // Paper - Incremental Auto Save - cap max per tick
++                        return false;
++                    }
+                 }
+             }
++        } finally {
++            this.iterating = false;
+         }
+-
+         return true;
+     }
+ 
+@@ -343,11 +627,16 @@ public class ChunkProviderServer implements IChunkProvider {
+             long unloadAfter = world.paperConfig.delayChunkUnloadsBy;
+             if (unloadAfter > 0) {
+                 //noinspection Convert2streamapi
+-                for (Chunk chunk : chunks.values()) {
+-                    if (chunk.scheduledForUnload != null && now - chunk.scheduledForUnload > unloadAfter) {
+-                        chunk.scheduledForUnload = null;
+-                        unload(chunk);
++                this.iterating = true;
++                try {
++                    for (Chunk chunk : chunks.values()) {
++                        if (chunk.scheduledForUnload != null && now - chunk.scheduledForUnload > unloadAfter) {
++                            chunk.scheduledForUnload = null;
++                            unload(chunk);
++                        }
+                     }
++                } finally {
++                    this.iterating = false;
+                 }
+             }
+             // Paper end
+diff --git a/src/main/java/net/minecraft/server/PaperLightingQueue.java b/src/main/java/net/minecraft/server/PaperLightingQueue.java
+index 2350fe3..9e5a73e 100644
+--- a/src/main/java/net/minecraft/server/PaperLightingQueue.java
++++ b/src/main/java/net/minecraft/server/PaperLightingQueue.java
+@@ -2,12 +2,12 @@ package net.minecraft.server;
+ 
+ import co.aikar.timings.Timing;
+ import java.util.ArrayDeque;
++import java.util.Iterator;
+ 
+ class PaperLightingQueue {
+     private static final long MAX_TIME = (long) (1000000000 / 20 * .95);
+     private static int updatesThisTick;
+ 
+-
+     static void processQueue(long curTime) {
+         updatesThisTick = 0;
+ 
+@@ -20,10 +20,27 @@ class PaperLightingQueue {
+                 continue;
+             }
+ 
+-            for (Chunk chunk : ((WorldServer) world).getChunkProviderServer().chunks.values()) {
+-                if (chunk.lightingQueue.processQueue(startTime, maxTickTime)) {
+-                    break START;
++            /* Concrete - dump map & iterator state on NPE */
++            final Iterator<Chunk> chunkIterator = ((WorldServer) world).getChunkProviderServer().chunks.values().iterator();
++            try {
++                ((WorldServer) world).getChunkProviderServer().iterating = true;
++                try {
++                    for (Chunk chunk = chunkIterator.next(); chunkIterator.hasNext(); chunk = chunkIterator.next()) {
++                        if (chunk.lightingQueue.processQueue(startTime, maxTickTime)) {
++                            break START;
++                        }
++                    }
++                } finally {
++                    ((WorldServer) world).getChunkProviderServer().iterating = false;
+                 }
++            } catch (final NullPointerException | ArrayIndexOutOfBoundsException | ArithmeticException ex) {
++                /* Will re-iteration work? */
++
++                final long time = System.currentTimeMillis();
++                System.out.println("Dumping add/remove sequence, NPE on chunk iteration, file: " + time + ".arithmeticexception");
++                /* TODO: Implement */
++
++                throw ex; /* Re-throw */
+             }
+         }
+     }
+@@ -80,7 +97,7 @@ class PaperLightingQueue {
+             }
+             processQueue(0, 0); // No timeout
+ 
+-            final int radius = 1; // TODO: bitflip, why should this ever be 2?
++            final int radius = 1; // TODO: bitflip, why should this ever be 2? /* Have fun "bitflipping" 2^n! */
+             for (int x = chunk.locX - radius; x <= chunk.locX + radius; ++x) {
+                 for (int z = chunk.locZ - radius; z <= chunk.locZ + radius; ++z) {
+                     if (x == chunk.locX && z == chunk.locZ) {
+diff --git a/src/main/java/net/minecraft/server/SpawnerCreature.java b/src/main/java/net/minecraft/server/SpawnerCreature.java
+index c1f6e63..c5ea091 100644
+--- a/src/main/java/net/minecraft/server/SpawnerCreature.java
++++ b/src/main/java/net/minecraft/server/SpawnerCreature.java
+@@ -26,10 +26,10 @@ public final class SpawnerCreature {
+         // Paper start - use entire world, not just active chunks. Spigot broke vanilla expectations.
+         if (true) {
+             return server
+-                    .getChunkProviderServer()
+-                    .chunks.values()
+-                    .stream()
+-                    .collect(java.util.stream.Collectors.summingInt(c -> c.entityCount.get(oClass)));
++                        .getChunkProviderServer()
++                        .chunks.values()
++                        .stream()
++                        .collect(java.util.stream.Collectors.summingInt(c -> c.entityCount.get(oClass)));
+         }
+         // Paper end
+         int i = 0;
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
+index b7e063d..cd19639 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftWorld.java
+@@ -1538,19 +1538,24 @@ public class CraftWorld implements World {
+         }
+ 
+         ChunkProviderServer cps = world.getChunkProviderServer();
+-        for (net.minecraft.server.Chunk chunk : cps.chunks.values()) {
+-            // If in use, skip it
+-            if (isChunkInUse(chunk.locX, chunk.locZ) || chunk.scheduledForUnload != null) { // Paper - delayed chunk unloads
+-                continue;
+-            }
++        cps.iterating = true;
++        try {
++            for (net.minecraft.server.Chunk chunk : cps.chunks.values()) {
++                // If in use, skip it
++                if (isChunkInUse(chunk.locX, chunk.locZ) || chunk.scheduledForUnload != null) { // Paper - delayed chunk unloads
++                    continue;
++                }
+ 
+-            // Already unloading?
+-            if (cps.unloadQueue.contains(ChunkCoordIntPair.a(chunk.locX, chunk.locZ))) {
+-                continue;
+-            }
++                // Already unloading?
++                if (cps.unloadQueue.contains(ChunkCoordIntPair.a(chunk.locX, chunk.locZ))) {
++                    continue;
++                }
+ 
+-            // Add unload request
+-            cps.unload(chunk);
++                // Add unload request
++                cps.unload(chunk);
++            }
++        } finally {
++            cps.iterating = false;
+         }
+     }
+     // Spigot start
+-- 
+2.7.4
+
