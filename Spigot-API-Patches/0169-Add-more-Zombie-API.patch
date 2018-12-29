@@ -1,14 +1,14 @@
-From 8fc89f6aa5cd95b3b784cefd12a6e7e4bd4db165 Mon Sep 17 00:00:00 2001
+From b7976e6b1c4c2dc37d3e35ba284b754c462719b7 Mon Sep 17 00:00:00 2001
 From: BillyGalbreath <Blake.Galbreath@GMail.com>
 Date: Sun, 7 Oct 2018 04:29:51 -0500
 Subject: [PATCH] Add more Zombie API
 
 
 diff --git a/src/main/java/org/bukkit/entity/Zombie.java b/src/main/java/org/bukkit/entity/Zombie.java
-index 48034198..615dd990 100644
+index 48034198..c540c755 100644
 --- a/src/main/java/org/bukkit/entity/Zombie.java
 +++ b/src/main/java/org/bukkit/entity/Zombie.java
-@@ -79,4 +79,55 @@ public interface Zombie extends Monster {
+@@ -79,4 +79,67 @@ public interface Zombie extends Monster {
       * @param time new conversion time
       */
      void setConversionTime(int time);
@@ -62,8 +62,20 @@ index 48034198..615dd990 100644
 +     * @param shouldBurnInDay True to burn in sunlight
 +     */
 +    void setShouldBurnInDay(boolean shouldBurnInDay);
++
++    /**
++     * Returns whether this zombioe will try to break doors.
++     * @return Whether this zombie will try to break doors.
++     */
++    boolean canBreakDoors();
++
++    /**
++     * Sets whether this zombie will try to break doors.
++     * @param canBreakDoors Whether the zombie will try to break doors.
++     */
++    void setCanBreakDoors(boolean canBreakDoors);
 +    // Paper end
  }
 -- 
-2.20.0
+2.20.1
 

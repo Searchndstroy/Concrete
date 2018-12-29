@@ -1,11 +1,11 @@
-From e65af43e246fc653434b585cf761de23cb236a81 Mon Sep 17 00:00:00 2001
+From 3f2166ae1bea486394d071c66da5d2c20748f6bc Mon Sep 17 00:00:00 2001
 From: BillyGalbreath <Blake.Galbreath@GMail.com>
 Date: Sun, 7 Oct 2018 04:29:59 -0500
 Subject: [PATCH] Add more Zombie API
 
 
 diff --git a/src/main/java/net/minecraft/server/EntityZombie.java b/src/main/java/net/minecraft/server/EntityZombie.java
-index f25bcfd8f..72ea3ba76 100644
+index f6f460162..3c4197dbd 100644
 --- a/src/main/java/net/minecraft/server/EntityZombie.java
 +++ b/src/main/java/net/minecraft/server/EntityZombie.java
 @@ -22,8 +22,8 @@ public class EntityZombie extends EntityMonster {
@@ -16,8 +16,8 @@ index f25bcfd8f..72ea3ba76 100644
 -    public static final DataWatcherObject<Boolean> bF = DataWatcher.a(EntityZombie.class, DataWatcherRegistry.i); // PAIL
 +    private static final DataWatcherObject<Boolean> bE = DataWatcher.a(EntityZombie.class, DataWatcherRegistry.i); private static final DataWatcherObject<Boolean> armsRaised = bE; // Paper - OBFHELPER
 +    public static final DataWatcherObject<Boolean> bF = DataWatcher.a(EntityZombie.class, DataWatcherRegistry.i); private static final DataWatcherObject<Boolean> drowning = bF; // Paper - OBFHELPER
-     private final PathfinderGoalBreakDoor bG;
-     private boolean bH;
+     private final PathfinderGoalBreakDoor bG; private final PathfinderGoalBreakDoor getBreakDoorPathfinderGoal() { return this.bG; } // Paper - OBFHELPER
+     private boolean bH; public final boolean canBreakDoors() { return this.bH; } private final void setCanBreakDoorsInternal(boolean value) { this.bH = value; } // Paper - OBFHELPER
      private int bI;
 @@ -31,6 +31,7 @@ public class EntityZombie extends EntityMonster {
      private float bK;
@@ -27,7 +27,7 @@ index f25bcfd8f..72ea3ba76 100644
  
      public EntityZombie(EntityTypes<?> entitytypes, World world) {
          super(entitytypes, world);
-@@ -79,14 +80,22 @@ public class EntityZombie extends EntityMonster {
+@@ -79,14 +80,37 @@ public class EntityZombie extends EntityMonster {
          this.getDataWatcher().register(EntityZombie.bF, false);
      }
  
@@ -47,10 +47,25 @@ index f25bcfd8f..72ea3ba76 100644
 +    }
 +    // Paper end
 +
++    // Paper start - Add Zombie API
++    public void setCanBreakDoors(boolean canBreakDoors) {
++        if (this.canBreakDoors() == canBreakDoors) {
++            return;
++        }
++        this.setCanBreakDoorsInternal(canBreakDoors);
++        ((Navigation) this.getNavigation()).a(canBreakDoors);
++        if (canBreakDoors) {
++            this.goalSelector.addPathfinderGoal(1, this.getBreakDoorPathfinderGoal());
++        } else {
++            this.goalSelector.removePathfinderGoal(this.getBreakDoorPathfinderGoal());
++        }
++    }
++    // Paper end
++
      public boolean dH() {
          return this.bH;
      }
-@@ -210,11 +219,19 @@ public class EntityZombie extends EntityMonster {
+@@ -210,11 +234,19 @@ public class EntityZombie extends EntityMonster {
          super.movementTick();
      }
  
@@ -70,7 +85,7 @@ index f25bcfd8f..72ea3ba76 100644
      protected void dE() {
          this.a((EntityZombie) EntityTypes.DROWNED.create(world)); // Paper
          this.world.a((EntityHuman) null, 1040, new BlockPosition((int) this.locX, (int) this.locY, (int) this.locZ), 0);
-@@ -253,10 +270,17 @@ public class EntityZombie extends EntityMonster {
+@@ -253,10 +285,17 @@ public class EntityZombie extends EntityMonster {
          }
      }
  
@@ -89,7 +104,7 @@ index f25bcfd8f..72ea3ba76 100644
      public boolean damageEntity(DamageSource damagesource, float f) {
          if (super.damageEntity(damagesource, f)) {
              EntityLiving entityliving = this.getGoalTarget();
-@@ -369,6 +393,7 @@ public class EntityZombie extends EntityMonster {
+@@ -369,6 +408,7 @@ public class EntityZombie extends EntityMonster {
          nbttagcompound.setBoolean("CanBreakDoors", this.dH());
          nbttagcompound.setInt("InWaterTime", this.isInWater() ? this.bI : -1);
          nbttagcompound.setInt("DrownedConversionTime", this.isDrownConverting() ? this.drownedConversionTime : -1);
@@ -97,7 +112,7 @@ index f25bcfd8f..72ea3ba76 100644
      }
  
      public void a(NBTTagCompound nbttagcompound) {
-@@ -382,7 +407,11 @@ public class EntityZombie extends EntityMonster {
+@@ -382,7 +422,11 @@ public class EntityZombie extends EntityMonster {
          if (nbttagcompound.hasKeyOfType("DrownedConversionTime", 99) && nbttagcompound.getInt("DrownedConversionTime") > -1) {
              this.a(nbttagcompound.getInt("DrownedConversionTime"));
          }
@@ -111,10 +126,10 @@ index f25bcfd8f..72ea3ba76 100644
  
      public void b(EntityLiving entityliving) {
 diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftZombie.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftZombie.java
-index 7af4ea9f8..4d4c50212 100644
+index 7af4ea9f8..0b07792b9 100644
 --- a/src/main/java/org/bukkit/craftbukkit/entity/CraftZombie.java
 +++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftZombie.java
-@@ -77,4 +77,34 @@ public class CraftZombie extends CraftMonster implements Zombie {
+@@ -77,4 +77,42 @@ public class CraftZombie extends CraftMonster implements Zombie {
              getHandle().a(time);
          }
      }
@@ -146,6 +161,14 @@ index 7af4ea9f8..4d4c50212 100644
 +
 +    public void setShouldBurnInDay(boolean shouldBurnInDay) {
 +        getHandle().setShouldBurnInDay(shouldBurnInDay);
++    }
++
++    public boolean canBreakDoors() {
++        return getHandle().canBreakDoors();
++    }
++
++    public void setCanBreakDoors(boolean canBreakDoors) {
++        getHandle().setCanBreakDoors(canBreakDoors);
 +    }
 +    // Paper end
  }

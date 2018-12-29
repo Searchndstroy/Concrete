@@ -1,4 +1,4 @@
-From dadb0a624cab08627738eb8b0538dc25bf636f10 Mon Sep 17 00:00:00 2001
+From bece8efac3d1fe40505715c33ca6624038986d2b Mon Sep 17 00:00:00 2001
 From: Aikar <aikar@aikar.co>
 Date: Wed, 30 Mar 2016 19:36:20 -0400
 Subject: [PATCH] MC Dev fixes
@@ -274,6 +274,21 @@ index 4dee04581..9c48bb3c9 100644
      static class a extends PathfinderGoalNearestAttackableTarget<EntityWolf> {
          public a(EntityLlama entityllama) {
              super(entityllama, EntityWolf.class, 16, false, true, (Predicate)null);
+diff --git a/src/main/java/net/minecraft/server/EntityZombie.java b/src/main/java/net/minecraft/server/EntityZombie.java
+index 13f6a6cd4..ec8e08d97 100644
+--- a/src/main/java/net/minecraft/server/EntityZombie.java
++++ b/src/main/java/net/minecraft/server/EntityZombie.java
+@@ -24,8 +24,8 @@ public class EntityZombie extends EntityMonster {
+     private static final DataWatcherObject<Integer> bD = DataWatcher.a(EntityZombie.class, DataWatcherRegistry.b);
+     private static final DataWatcherObject<Boolean> bE = DataWatcher.a(EntityZombie.class, DataWatcherRegistry.i);
+     public static final DataWatcherObject<Boolean> bF = DataWatcher.a(EntityZombie.class, DataWatcherRegistry.i); // PAIL
+-    private final PathfinderGoalBreakDoor bG;
+-    private boolean bH;
++    private final PathfinderGoalBreakDoor bG; private final PathfinderGoalBreakDoor getBreakDoorPathfinderGoal() { return this.bG; } // Paper - OBFHELPER
++    private boolean bH; public final boolean canBreakDoors() { return this.bH; } private final void setCanBreakDoorsInternal(boolean value) { this.bH = value; } // Paper - OBFHELPER
+     private int bI;
+     public int drownedConversionTime; // PAIL
+     private float bK;
 diff --git a/src/main/java/net/minecraft/server/EnumDirection.java b/src/main/java/net/minecraft/server/EnumDirection.java
 index 23ca6fc50..44c91ba26 100644
 --- a/src/main/java/net/minecraft/server/EnumDirection.java
@@ -478,6 +493,26 @@ index a717ad95f..ff7e20dfc 100644
 -        this.encode(channelhandlercontext, (Packet)object, bytebuf);
 -    }
  }
+diff --git a/src/main/java/net/minecraft/server/PathfinderGoalSelector.java b/src/main/java/net/minecraft/server/PathfinderGoalSelector.java
+index ae21eb84d..01d6b2cad 100644
+--- a/src/main/java/net/minecraft/server/PathfinderGoalSelector.java
++++ b/src/main/java/net/minecraft/server/PathfinderGoalSelector.java
+@@ -18,12 +18,14 @@ public class PathfinderGoalSelector {
+ 
+     public PathfinderGoalSelector(MethodProfiler methodprofiler) {
+         this.d = methodprofiler;
+-    }
++    } // Paper - OBFHELPER
+ 
++    public final void addPathfinderGoal(final int i, final PathfinderGoal pathfinderGoal) { this.a(i, pathfinderGoal); } // Paper - OBFHELPER
+     public void a(int i, PathfinderGoal pathfindergoal) {
+         this.b.add(new PathfinderGoalSelector.PathfinderGoalSelectorItem(i, pathfindergoal));
+     }
+ 
++    public final void removePathfinderGoal(final PathfinderGoal pathfinderGoal) { this.a(pathfinderGoal); } // Paper - OBFHELPER
+     public void a(PathfinderGoal pathfindergoal) {
+         Iterator iterator = this.b.iterator();
+ 
 diff --git a/src/main/java/net/minecraft/server/ProtoChunk.java b/src/main/java/net/minecraft/server/ProtoChunk.java
 index 8bc7c0ccd..faaad0f41 100644
 --- a/src/main/java/net/minecraft/server/ProtoChunk.java
@@ -626,5 +661,5 @@ index c1bbacfc1..f0a826cd1 100644
                  }
              } catch (Exception exception) {
 -- 
-2.20.0
+2.20.1
 

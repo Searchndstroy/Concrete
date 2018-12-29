@@ -1,4 +1,4 @@
-From fdd7766d19df64b696d939e214b6a03c3e1757ab Mon Sep 17 00:00:00 2001
+From 8b9c966593f3c633a524abefc81f2f9ca44d7c0a Mon Sep 17 00:00:00 2001
 From: Aikar <aikar@aikar.co>
 Date: Fri, 13 May 2016 01:38:06 -0400
 Subject: [PATCH] Activation Range Improvements
@@ -148,7 +148,7 @@ index 9a75cb63b..cf10605aa 100644
                          }
                      }
 diff --git a/src/main/java/net/minecraft/server/PathfinderGoalSelector.java b/src/main/java/net/minecraft/server/PathfinderGoalSelector.java
-index ae21eb84d..8f35f71f8 100644
+index 01d6b2cad..973204ad9 100644
 --- a/src/main/java/net/minecraft/server/PathfinderGoalSelector.java
 +++ b/src/main/java/net/minecraft/server/PathfinderGoalSelector.java
 @@ -10,10 +10,10 @@ import org.apache.logging.log4j.Logger;
@@ -165,7 +165,7 @@ index ae21eb84d..8f35f71f8 100644
      private int g;
  
      public PathfinderGoalSelector(MethodProfiler methodprofiler) {
-@@ -24,6 +24,20 @@ public class PathfinderGoalSelector {
+@@ -25,6 +25,20 @@ public class PathfinderGoalSelector {
          this.b.add(new PathfinderGoalSelector.PathfinderGoalSelectorItem(i, pathfindergoal));
      }
  
@@ -183,9 +183,9 @@ index ae21eb84d..8f35f71f8 100644
 +    }
 +    // Paper end
 +
+     public final void removePathfinderGoal(final PathfinderGoal pathfinderGoal) { this.a(pathfinderGoal); } // Paper - OBFHELPER
      public void a(PathfinderGoal pathfindergoal) {
          Iterator iterator = this.b.iterator();
- 
 diff --git a/src/main/java/org/spigotmc/ActivationRange.java b/src/main/java/org/spigotmc/ActivationRange.java
 index 09df00e94..d08ef3fe1 100644
 --- a/src/main/java/org/spigotmc/ActivationRange.java
@@ -404,5 +404,5 @@ index 87bc8e2d9..06d84a0b6 100644
          log( "Entity Activation Range: An " + animalActivationRange + " / Mo " + monsterActivationRange + " / Mi " + miscActivationRange + " / Tiv " + tickInactiveVillagers );
      }
 -- 
-2.20.0
+2.20.1
 
