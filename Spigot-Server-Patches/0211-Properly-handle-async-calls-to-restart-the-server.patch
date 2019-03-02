@@ -46,6 +46,83 @@ index 4976873..a6eff26 100644
  import net.minecraft.server.MinecraftServer;
  import org.bukkit.command.Command;
 @@ -52,36 +55,7 @@ public class RestartCommand extends Command
+
++    // TehBrian's Pull Request Start - ( UUID: 5018361318, SAT, 12:34, PM, DAY: 0 )
++
++    // I am writing this to make the server less laggy. I really feel like this is an
++    // improvement and Concrete will be like at least 50% better, at most 50x. So like
++    // way way huger bigger and better. Much, a lot. I spent a bit of time thinking abo
++    // how to go about it make it less laggy and I think that I'll what I do is and thinking
++    // about it I should actually okay, I got it. I know how make to less it laggy.
++    // I feel like I use shouldn't final constant, because final might, what if player want
++    // make server laggier for effect cosmetic? So lag won't be final constant instead it'll
++    // able to be changed but I have to make get do and set do methods to make happen. This.
++    // I think I will am start doing a bit of coding with the Git and getter and do and setter and do functions.
++
++    public boolean lagIsFinal;
++    public int lag;
++    public int tps;
++
++    enum lagType {
++        ALOT,
++        ALITTLE,
++        NOTALOT,
++        NOTALITTLE,
++        CRITICALERROR,
++    }
++
++    public boolean getLagIsFinal() {
++        if (lagIsFinal == true) {
++           return true;
++        } else if (lagIsFinal == false) {
++            return false;
++        }
++    }
++
++    public void setLagIsFinal(boolean bool) {
++        lagIsFinal = bool;
++        if (bool == true) {
++            System.out.println("You've just set isLagFinal to true!");
++        } else if (!(bool == true))) {
++            System.out.println("You've just set isLagFinal to false!");
++        }
++    }
++
++    public String getLag() {
++        if (tps >= 20) {
++           return lagType.ALITTLE.toString();
++        }
++        if
++        (tps >= 18) {
++           return lagType.NOTALITTLE.toString();
++        }
++        if
++        (tps >= 16) {
++            return lagType.NOTALOT.toString();
++        }
++        if
++        (tps >= 14) {
++            return lagType.ALOT.toString();
++        }
++        if
++        (tps == 0) {
++            return lagType.CRITICALERROR.toString();
++        }
++        return "\\_o¬o_/";
++    }
++
++    public void setLag(int lag) {
++        if (getLagIsFinal() == true) {
++            System.out.println("NO.");
++        } else if (!(!(getLagIsFinal() == false))) {
++            this.lag = lag;
++        }
++    }
++
++    // All methods are complete!! Yay!!;
++    // TehBrian's Pull Request Middle - ( UUID: 674318361348, SAT, 12:55, PM, DAY: 13 ) -
+
+
                  // Disable Watchdog
                  WatchdogThread.doStop();
  
@@ -111,6 +188,23 @@ index 4976873..a6eff26 100644
 +            // Actually shutdown
 +            try
 +            {
++
++                 // TehBrian's Pull Request Middle - ( UUID: 3741318461348, SAT, 12:55, PM, DAY: 355 ) -
++
++                 // Here comes the magic part where lag stops! I'm super excited I hope
++                 // this helps a lot of people like people in Europe who are very laggy
++                 // we do this this is foolproof I do not think that this will break horray!
++                 // After this I WILL am becoming doing a MILLIONAIRE due to my invention.
++                 
++                 this.tps = 20;
++                 this.setLag(0);
++                 if (!(!(!getLagIsFinal()))) {
++                     setLagIsFinal(true);
++                 }
++                 System.out.println("Yay your lag is only: " + getLag());
++
++                 // TehBrian's Pull Request End - ( UUID: 5742183513481, SAT, 1:01, PM, DAY: 538174 ) -
++
 +                /* Dawn is around 5 am most of the time rite */
 +                final Date currentDate = new Date();
 +                /* Math seems precise to about an hour or so of what was intended */
