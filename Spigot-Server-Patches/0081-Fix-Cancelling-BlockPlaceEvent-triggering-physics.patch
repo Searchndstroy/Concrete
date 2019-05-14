@@ -1,0 +1,21 @@
+From 86e61b3277308e8b75f4c933d36669f77d764518 Mon Sep 17 00:00:00 2001
+From: Aikar <aikar@aikar.co>
+Date: Sun, 3 Apr 2016 17:48:50 -0400
+Subject: [PATCH] Fix Cancelling BlockPlaceEvent triggering physics
+
+
+diff --git a/src/main/java/net/minecraft/server/World.java b/src/main/java/net/minecraft/server/World.java
+index a93ccebebe..32ac659210 100644
+--- a/src/main/java/net/minecraft/server/World.java
++++ b/src/main/java/net/minecraft/server/World.java
+@@ -506,6 +506,7 @@ public abstract class World implements IIBlockAccess, GeneratorAccess, AutoClose
+     public void m(BlockPosition blockposition) {}
+ 
+     public void applyPhysics(BlockPosition blockposition, Block block) {
++        if (captureBlockStates) { return; } // Paper - Cancel all physics during placement
+         this.a(blockposition.west(), block, blockposition);
+         this.a(blockposition.east(), block, blockposition);
+         this.a(blockposition.down(), block, blockposition);
+-- 
+2.21.0
+
