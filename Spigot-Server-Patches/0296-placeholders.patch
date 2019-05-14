@@ -1,0 +1,226 @@
+From 16cf80169313770f5913df285078c072606fdf1b Mon Sep 17 00:00:00 2001
+From: Spottedleaf <Spottedleaf@users.noreply.github.com>
+Date: Tue, 14 May 2019 02:13:38 -0700
+Subject: [PATCH] placeholders
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftOfflinePlayer.java b/src/main/java/org/bukkit/craftbukkit/CraftOfflinePlayer.java
+index 6a448c02ec..9414bb6892 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftOfflinePlayer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftOfflinePlayer.java
+@@ -34,6 +34,16 @@ public class CraftOfflinePlayer implements OfflinePlayer, ConfigurationSerializa
+ 
+     }
+ 
++    @Override
++    public long getLastSeen() {
++        return 0L;
++    }
++
++    @Override
++    public long getLastLogin() {
++        return 0L;
++    }
++
+     public GameProfile getProfile() {
+         return profile;
+     }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/AbstractProjectile.java b/src/main/java/org/bukkit/craftbukkit/entity/AbstractProjectile.java
+index 47b3fe5554..58459dce85 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/AbstractProjectile.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/AbstractProjectile.java
+@@ -2,6 +2,7 @@ package org.bukkit.craftbukkit.entity;
+ 
+ import org.bukkit.craftbukkit.CraftServer;
+ import org.bukkit.entity.Projectile;
++import org.bukkit.event.entity.CreatureSpawnEvent;
+ 
+ public abstract class AbstractProjectile extends CraftEntity implements Projectile {
+ 
+@@ -22,4 +23,8 @@ public abstract class AbstractProjectile extends CraftEntity implements Projecti
+         this.doesBounce = doesBounce;
+     }
+ 
++    @Override
++    public CreatureSpawnEvent.SpawnReason getEntitySpawnReason() {
++        return CreatureSpawnEvent.SpawnReason.CUSTOM;
++    }
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftEnderDragon.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftEnderDragon.java
+index ee95e4e338..7402235554 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftEnderDragon.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftEnderDragon.java
+@@ -1,17 +1,21 @@
+ package org.bukkit.craftbukkit.entity;
+ 
++import com.destroystokyo.paper.entity.Pathfinder;
+ import com.google.common.collect.ImmutableSet;
+ import com.google.common.collect.ImmutableSet.Builder;
+ import java.util.Set;
+ import net.minecraft.server.DragonControllerPhase;
+ import net.minecraft.server.EntityComplexPart;
+ import net.minecraft.server.EntityEnderDragon;
++import org.bukkit.block.Block;
+ import org.bukkit.boss.BossBar;
+ import org.bukkit.craftbukkit.CraftServer;
+ import org.bukkit.craftbukkit.boss.CraftBossBar;
+ import org.bukkit.entity.ComplexEntityPart;
+ import org.bukkit.entity.EnderDragon;
+ import org.bukkit.entity.EntityType;
++import org.bukkit.entity.LivingEntity;
++import org.bukkit.loot.LootTable;
+ 
+ public class CraftEnderDragon extends CraftComplexLivingEntity implements EnderDragon {
+ 
+@@ -69,6 +73,56 @@ public class CraftEnderDragon extends CraftComplexLivingEntity implements EnderD
+         return DragonControllerPhase.getById(phase.ordinal());
+     }
+ 
++    @Override
++    public LivingEntity getTarget() {
++        return null;
++    }
++
++    @Override
++    public void setTarget(LivingEntity target) {
++
++    }
++
++    @Override
++    public Block getTargetBlock(int maxDistance) {
++        return null;
++    }
++
++    @Override
++    public Pathfinder getPathfinder() {
++        return null;
++    }
++
++    @Override
++    public boolean isInDaylight() {
++        return false;
++    }
++
++    @Override
++    public void setLootTable(LootTable table) {
++
++    }
++
++    @Override
++    public void setLootTable(LootTable table, long seed) {
++
++    }
++
++    @Override
++    public LootTable getLootTable() {
++        return null;
++    }
++
++    @Override
++    public void setSeed(long seed) {
++
++    }
++
++    @Override
++    public long getSeed() {
++        return 0;
++    }
++
+     @Override
+     public BossBar getBossBar() {
+         return bossBar;
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+index 52f72e1471..b2d22772e3 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+@@ -152,6 +152,7 @@ import org.bukkit.craftbukkit.persistence.CraftPersistentDataTypeRegistry;
+ import org.bukkit.craftbukkit.util.CraftChatMessage;
+ import org.bukkit.craftbukkit.util.CraftVector;
+ import org.bukkit.entity.Pose;
++import org.bukkit.event.entity.CreatureSpawnEvent;
+ import org.bukkit.event.entity.EntityDamageEvent;
+ import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
+ import org.bukkit.metadata.MetadataValue;
+@@ -179,6 +180,11 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+         this.entity = entity;
+     }
+ 
++    @Override
++    public CreatureSpawnEvent.SpawnReason getEntitySpawnReason() {
++        return CreatureSpawnEvent.SpawnReason.CUSTOM;
++    }
++
+     @Override
+     public Chunk getChunk() {
+         net.minecraft.server.Chunk currentChunk = entity.getCurrentChunk();
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
+index b85385ba41..c3e7be98c1 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftLivingEntity.java
+@@ -69,6 +69,7 @@ import org.bukkit.entity.ThrownPotion;
+ import org.bukkit.entity.TippedArrow;
+ import org.bukkit.entity.Trident;
+ import org.bukkit.entity.WitherSkull;
++import org.bukkit.event.entity.CreatureSpawnEvent;
+ import org.bukkit.event.entity.EntityPotionEffectEvent;
+ import org.bukkit.event.player.PlayerTeleportEvent;
+ import org.bukkit.inventory.EntityEquipment;
+@@ -92,6 +93,11 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
+         }
+     }
+ 
++    @Override
++    public CreatureSpawnEvent.SpawnReason getEntitySpawnReason() {
++        return CreatureSpawnEvent.SpawnReason.CUSTOM;
++    }
++
+     @Override
+     public double getHealth() {
+         return Math.min(Math.max(0, getHandle().getHealth()), getMaxHealth());
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPhantom.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPhantom.java
+index 9f9ee92390..26621a5217 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPhantom.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPhantom.java
+@@ -5,6 +5,8 @@ import org.bukkit.craftbukkit.CraftServer;
+ import org.bukkit.entity.EntityType;
+ import org.bukkit.entity.Phantom;
+ 
++import java.util.UUID;
++
+ public class CraftPhantom extends CraftFlying implements Phantom {
+ 
+     public CraftPhantom(CraftServer server, EntityPhantom entity) {
+@@ -35,4 +37,9 @@ public class CraftPhantom extends CraftFlying implements Phantom {
+     public EntityType getType() {
+         return EntityType.PHANTOM;
+     }
++
++    @Override
++    public UUID getSpawningEntity() {
++        return UUID.randomUUID();
++    }
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+index 7c7a6cfdce..7a4938f6ff 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
+@@ -145,6 +145,16 @@ public class CraftPlayer extends CraftHumanEntity implements Player {
+         firstPlayed = System.currentTimeMillis();
+     }
+ 
++    @Override
++    public long getLastSeen() {
++        return 0L;
++    }
++
++    @Override
++    public long getLastLogin() {
++        return 0L;
++    }
++
+     public GameProfile getProfile() {
+         return getHandle().getProfile();
+     }
+-- 
+2.21.0
+
