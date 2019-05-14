@@ -1,0 +1,24 @@
+From 162231bdec13cdcbac0ca5ae5f9704c3913d63e3 Mon Sep 17 00:00:00 2001
+From: Aikar <aikar@aikar.co>
+Date: Sun, 22 Jul 2018 21:21:41 -0400
+Subject: [PATCH] Don't save Proto Chunks
+
+These chunks are unfinished, and waste cpu time saving these unfinished chunks.
+the loadChunk method refuses to acknoledge they exists, and will restart
+a new chunk generation process to begin with, so saving them serves no benefit.
+
+diff --git a/src/main/java/net/minecraft/server/PlayerChunkMap.java b/src/main/java/net/minecraft/server/PlayerChunkMap.java
+index 32bff99594..0d3fee2593 100644
+--- a/src/main/java/net/minecraft/server/PlayerChunkMap.java
++++ b/src/main/java/net/minecraft/server/PlayerChunkMap.java
+@@ -588,6 +588,7 @@ public class PlayerChunkMap extends IChunkLoader implements PlayerChunk.d {
+     }
+ 
+     public boolean saveChunk(IChunkAccess ichunkaccess, boolean save) {
++        if (ichunkaccess.getChunkStatus().getType() == ChunkStatus.Type.PROTOCHUNK) { return false; } // Paper - don't save proto chunks
+         // CraftBukkit end
+         this.n.a(ichunkaccess.getPos());
+         if (!save) { // CraftBukkit
+-- 
+2.21.0
+

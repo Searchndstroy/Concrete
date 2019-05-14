@@ -1,0 +1,62 @@
+From dcdcf43396e1baa7af9ce884dc0ed4c6ea3c6ede Mon Sep 17 00:00:00 2001
+From: Spottedleaf <Spottedleaf@users.noreply.github.com>
+Date: Tue, 14 May 2019 09:25:13 -0700
+Subject: [PATCH] fix oopsies
+
+
+diff --git a/src/main/java/net/minecraft/server/EntityWitch.java b/src/main/java/net/minecraft/server/EntityWitch.java
+index 3cbb34a0ce..5f981a6098 100644
+--- a/src/main/java/net/minecraft/server/EntityWitch.java
++++ b/src/main/java/net/minecraft/server/EntityWitch.java
+@@ -158,7 +158,7 @@ public class EntityWitch extends EntityRaider implements IRangedEntity {
+         setSlot(EnumItemSlot.MAINHAND, CraftItemStack.asNMSCopy(WitchReadyPotionEvent.process((Witch) getBukkitEntity(), CraftItemStack.asCraftMirror(potion))));
+         setPotionUseTimeLeft(getItemInMainHand().getItemUseMaxDuration());
+         setDrinkingPotion(true);
+-        world.sendSoundEffect(null, locX, locY, locZ, SoundEffects.ENTITY_WITCH_DRINK, getSoundCategory(), 1.0F, 0.8F + random.nextFloat() * 0.4F);
++        world.a(null, locX, locY, locZ, SoundEffects.ENTITY_WITCH_DRINK, getSoundCategory(), 1.0F, 0.8F + random.nextFloat() * 0.4F);
+         AttributeInstance attributeinstance = getAttributeInstance(GenericAttributes.MOVEMENT_SPEED);
+         attributeinstance.removeModifier(EntityWitch.DRINKING_SPEED);
+         attributeinstance.addModifier(EntityWitch.DRINKING_SPEED);
+diff --git a/src/main/java/net/minecraft/server/World.java b/src/main/java/net/minecraft/server/World.java
+index 1f19cb3301..39c5a51408 100644
+--- a/src/main/java/net/minecraft/server/World.java
++++ b/src/main/java/net/minecraft/server/World.java
+@@ -868,22 +868,11 @@ public abstract class World implements IIBlockAccess, GeneratorAccess, AutoClose
+             // Spigot end
+             consumer.accept(entity);
+         } catch (Throwable throwable) {
+-<<<<<<< HEAD
+             CrashReport crashreport = CrashReport.a(throwable, "Ticking entity");
+             CrashReportSystemDetails crashreportsystemdetails = crashreport.a("Entity being ticked");
+ 
+             entity.appendEntityCrashDetails(crashreportsystemdetails);
+             throw new ReportedException(crashreport);
+-=======
+-            // Paper start - Prevent tile entity and entity crashes
+-            String msg = "Entity threw exception at " + entity.world.getWorld().getName() + ":" + entity.locX + "," + entity.locY + "," + entity.locZ;
+-            System.err.println(msg);
+-            throwable.printStackTrace();
+-            getServer().getPluginManager().callEvent(new ServerExceptionEvent(new ServerInternalException(msg, throwable)));
+-            entity.dead = true;
+-            return;
+-            // Paper end
+->>>>>>> Add exception reporting event
+         } finally {
+             entity.tickTimer.stopTiming();
+             timings.tickEntities.stopTiming();
+diff --git a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+index 18f59b3a07..0df648ee9e 100644
+--- a/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
++++ b/src/main/java/org/bukkit/craftbukkit/event/CraftEventFactory.java
+@@ -779,7 +779,7 @@ public class CraftEventFactory {
+             double z = event.getEntity().getLocation().getZ();
+             net.minecraft.server.SoundEffect soundEffect = org.bukkit.craftbukkit.CraftSound.getSoundEffect(event.getDeathSound());
+             net.minecraft.server.SoundCategory soundCategory = net.minecraft.server.SoundCategory.valueOf(event.getDeathSoundCategory().name());
+-            victim.world.sendSoundEffect(source, x, y, z, soundEffect, soundCategory, event.getDeathSoundVolume(), event.getDeathSoundPitch());
++            victim.world.a(source, x, y, z, soundEffect, soundCategory, event.getDeathSoundVolume(), event.getDeathSoundPitch());
+         }
+     }
+     // Paper end
+-- 
+2.21.0
+

@@ -1,0 +1,41 @@
+From 8896de1bafabf5aeb3866480b708372a5ced2e6d Mon Sep 17 00:00:00 2001
+From: Brokkonaut <hannos17@gmx.de>
+Date: Sat, 14 Apr 2018 20:20:46 +0200
+Subject: [PATCH] Configurable sprint interruption on attack
+
+If the sprint interruption is disabled players continue sprinting when they attack entities.
+
+diff --git a/src/main/java/com/destroystokyo/paper/PaperWorldConfig.java b/src/main/java/com/destroystokyo/paper/PaperWorldConfig.java
+index 7b5474cf58..511003a71e 100644
+--- a/src/main/java/com/destroystokyo/paper/PaperWorldConfig.java
++++ b/src/main/java/com/destroystokyo/paper/PaperWorldConfig.java
+@@ -338,4 +338,9 @@ public class PaperWorldConfig {
+         disableCreeperLingeringEffect = getBoolean("disable-creeper-lingering-effect", false);
+         log("Creeper lingering effect: " + disableCreeperLingeringEffect);
+     }
++
++    public boolean disableSprintInterruptionOnAttack;
++    private void disableSprintInterruptionOnAttack() {
++        disableSprintInterruptionOnAttack = getBoolean("game-mechanics.disable-sprint-interruption-on-attack", false);
++    }
+ }
+diff --git a/src/main/java/net/minecraft/server/EntityHuman.java b/src/main/java/net/minecraft/server/EntityHuman.java
+index 06fa383e77..2f74bc391e 100644
+--- a/src/main/java/net/minecraft/server/EntityHuman.java
++++ b/src/main/java/net/minecraft/server/EntityHuman.java
+@@ -1021,7 +1021,11 @@ public abstract class EntityHuman extends EntityLiving {
+                             }
+ 
+                             this.setMot(this.getMot().d(0.6D, 1.0D, 0.6D));
+-                            this.setSprinting(false);
++                            // Paper start - Configuration option to disable automatic sprint interruption
++                            if (!world.paperConfig.disableSprintInterruptionOnAttack) {
++                                this.setSprinting(false);
++                            }
++                            // Paper end
+                         }
+ 
+                         if (flag3) {
+-- 
+2.21.0
+
