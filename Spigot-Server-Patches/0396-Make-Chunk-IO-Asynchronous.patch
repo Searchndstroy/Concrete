@@ -1,4 +1,4 @@
-From 5cd92a0c113e3b3a1a81581e230d6b32e5dce042 Mon Sep 17 00:00:00 2001
+From 92e04c41212f49745246fd3b0701008570eb0da4 Mon Sep 17 00:00:00 2001
 From: Spottedleaf <Spottedleaf@users.noreply.github.com>
 Date: Tue, 21 May 2019 21:51:52 -0700
 Subject: [PATCH] Make Chunk IO Asynchronous
@@ -70,10 +70,10 @@ index 3f14392e6e..ba9a06005c 100644
      }
  }
 diff --git a/src/main/java/net/minecraft/server/PlayerChunkMap.java b/src/main/java/net/minecraft/server/PlayerChunkMap.java
-index 31fe5f5e68..a8c90a7c13 100644
+index 31fe5f5e68..596eee47af 100644
 --- a/src/main/java/net/minecraft/server/PlayerChunkMap.java
 +++ b/src/main/java/net/minecraft/server/PlayerChunkMap.java
-@@ -350,28 +350,12 @@ public class PlayerChunkMap extends IChunkLoader implements PlayerChunk.d {
+@@ -350,25 +350,8 @@ public class PlayerChunkMap extends IChunkLoader implements PlayerChunk.d {
              if (completablefuture1 != completablefuture) {
                  this.a(i, playerchunk);
              } else {
@@ -93,21 +93,15 @@ index 31fe5f5e68..a8c90a7c13 100644
 -                        // CraftBukkit start
 -                    } else {
 -                        this.saveChunk(ichunkaccess);
-+                if (ichunkaccess != null) {
-+                    if (this.saveChunk(ichunkaccess, true, true, true)) {
-+                        this.lightEngine.a(ichunkaccess.getPos());
-+                        this.lightEngine.queueUpdate();
-+                        this.worldLoadListener.a(ichunkaccess.getPos(), (ChunkStatus) null);
-                     }
+-                    }
 -                    // CraftBukkit end
 -
--                    this.lightEngine.a(ichunkaccess.getPos());
--                    this.lightEngine.queueUpdate();
--                    this.worldLoadListener.a(ichunkaccess.getPos(), (ChunkStatus) null);
-                 }
- 
-             }
-@@ -389,9 +373,12 @@ public class PlayerChunkMap extends IChunkLoader implements PlayerChunk.d {
++                if (ichunkaccess != null) {
++                    this.saveChunk(ichunkaccess, true, true, true);
+                     this.lightEngine.a(ichunkaccess.getPos());
+                     this.lightEngine.queueUpdate();
+                     this.worldLoadListener.a(ichunkaccess.getPos(), (ChunkStatus) null);
+@@ -389,9 +372,12 @@ public class PlayerChunkMap extends IChunkLoader implements PlayerChunk.d {
          ChunkCoordIntPair chunkcoordintpair = playerchunk.h();
  
          if (chunkstatus == ChunkStatus.EMPTY) {
@@ -122,7 +116,7 @@ index 31fe5f5e68..a8c90a7c13 100644
  
                      if (nbttagcompound != null) {
                          boolean flag = nbttagcompound.hasKeyOfType("Level", 10) && nbttagcompound.getCompound("Level").hasKeyOfType("Status", 8);
-@@ -418,7 +405,31 @@ public class PlayerChunkMap extends IChunkLoader implements PlayerChunk.d {
+@@ -418,7 +404,31 @@ public class PlayerChunkMap extends IChunkLoader implements PlayerChunk.d {
                  }
  
                  return Either.left(new ProtoChunk(chunkcoordintpair, ChunkConverter.a));
@@ -155,10 +149,14 @@ index 31fe5f5e68..a8c90a7c13 100644
          } else {
              if (chunkstatus == ChunkStatus.LIGHT) {
                  this.u.a(TicketType.LIGHT, chunkcoordintpair, 33 + ChunkStatus.a(ChunkStatus.FEATURES), chunkcoordintpair);
-@@ -630,49 +641,113 @@ public class PlayerChunkMap extends IChunkLoader implements PlayerChunk.d {
+@@ -630,49 +640,119 @@ public class PlayerChunkMap extends IChunkLoader implements PlayerChunk.d {
      }
  
      public boolean saveChunk(IChunkAccess ichunkaccess, boolean save) {
+-        if (ichunkaccess.getChunkStatus().getType() == ChunkStatus.Type.PROTOCHUNK) { return true; } // Paper - don't save proto chunks
+-        // CraftBukkit end
+-        this.n.a(ichunkaccess.getPos());
+-        if (!save) { // CraftBukkit
 +        // Paper start - Async chunk io
 +        return this.saveChunk(ichunkaccess, save, false, false);
 +    }
@@ -166,17 +164,22 @@ index 31fe5f5e68..a8c90a7c13 100644
 +    // if unload == true then returns whether the chunk was unloaded
 +    public boolean saveChunk(IChunkAccess ichunkaccess, boolean save, boolean unload, boolean async) {
 +        org.spigotmc.AsyncCatcher.catchOp("chunk save");
-         if (ichunkaccess.getChunkStatus().getType() == ChunkStatus.Type.PROTOCHUNK) { return true; } // Paper - don't save proto chunks
--        // CraftBukkit end
--        this.n.a(ichunkaccess.getPos());
--        if (!save) { // CraftBukkit
++        final ChunkCoordIntPair chunkPos = ichunkaccess.getPos();
++        final long chunkKey = chunkPos.pair();
++
++        if (ichunkaccess.getChunkStatus().getType() == ChunkStatus.Type.PROTOCHUNK) { // Paper - don't save proto chunks
++            if (unload) {
++                if (this.pendingUnload.remove(chunkKey) != null) {
++                    this.loadedChunks.remove(chunkKey);
++                }
++            }
++            return true;
++        }
 +
 +        this.n.a(ichunkaccess.getPos()); // TODO - for now
 +        if (!save) {
              return false;
 +        }
-+        final ChunkCoordIntPair chunkPos = ichunkaccess.getPos();
-+        final long chunkKey = chunkPos.pair();
 +
 +        // note: it's important the save is on the IO executor such that we do not violate this order:
 +        // chunk save -> chunk unload -> chunk load
@@ -184,12 +187,12 @@ index 31fe5f5e68..a8c90a7c13 100644
 +        // perform events first
 +        final NBTTagCompound data;
 +        if (unload) {
-+            if (!this.pendingUnload.containsKey(chunkKey)) {
++            if (this.pendingUnload.remove(chunkKey) == null) {
 +                this.save(chunkPos, ChunkRegionLoader.saveChunk(this.world, ichunkaccess), async);
 +                return true;
 +            }
 +
-+            if (this.loadedChunks.contains(chunkKey) && ichunkaccess instanceof Chunk) {
++            if (this.loadedChunks.remove(chunkKey) && ichunkaccess instanceof Chunk) {
 +                Chunk chunk = (Chunk) ichunkaccess;
 +
 +                ChunkUnloadEvent event = new ChunkUnloadEvent(chunk.bukkitChunk, chunk.isNeedsSaving());
@@ -212,8 +215,6 @@ index 31fe5f5e68..a8c90a7c13 100644
 +            }
 +
 +            // now we can unload
-+            this.pendingUnload.remove(chunkKey);
-+            this.loadedChunks.remove(chunkKey);
 +
 +            return true; // ret true since we unloaded
          } else {
@@ -297,7 +298,7 @@ index 31fe5f5e68..a8c90a7c13 100644
  
      protected void setViewDistance(int i, int j) {
          int k = MathHelper.clamp(i + 1, 3, 33);
-@@ -743,6 +818,34 @@ public class PlayerChunkMap extends IChunkLoader implements PlayerChunk.d {
+@@ -743,6 +823,34 @@ public class PlayerChunkMap extends IChunkLoader implements PlayerChunk.d {
          return this.visibleChunks.long2ObjectEntrySet().fastIterator();
      }
  
