@@ -1,0 +1,52 @@
+From 3393cf20835a990b93b73ac5fe9097fbac8bae3a Mon Sep 17 00:00:00 2001
+From: Spottedleaf <Spottedleaf@users.noreply.github.com>
+Date: Sat, 6 Jul 2019 14:03:12 -0700
+Subject: [PATCH] Chunk neighbour deubg
+
+
+diff --git a/src/main/java/net/minecraft/server/Chunk.java b/src/main/java/net/minecraft/server/Chunk.java
+index d1556ec338..7865c21ae2 100644
+--- a/src/main/java/net/minecraft/server/Chunk.java
++++ b/src/main/java/net/minecraft/server/Chunk.java
+@@ -1489,9 +1489,20 @@ public class Chunk implements IChunkAccess {
+         this.a(ChunkStatus.a(s));
+     }
+ 
++    private final List<Throwable> throwables = new java.util.ArrayList<>();
++
+     public void H() {
++        if (!org.bukkit.Bukkit.isPrimaryThread()) {
++            MinecraftServer.LOGGER.fatal("Current thread: " + Thread.currentThread() + " is touching the neighbour chunk count asynchronously!", new Throwable());
++            throw new IllegalStateException(); // we log just in case some plugin decides to ignore this.
++        }
++        this.throwables.add(new Throwable("Increment from " + this.D + " to " + (this.D + 1)));
+         ++this.D;
+         if (this.D > 8) {
++            MinecraftServer.LOGGER.fatal("Neighbour count is out of sync! Dumping changes:");
++            for (Throwable throwable : this.throwables) {
++                MinecraftServer.LOGGER.fatal("", throwable);
++            }
+             throw new RuntimeException("Error while adding chunk to cache. Too many neighbors");
+         } else {
+             if (this.J()) {
+@@ -1502,8 +1513,17 @@ public class Chunk implements IChunkAccess {
+     }
+ 
+     public void I() {
++        if (!org.bukkit.Bukkit.isPrimaryThread()) {
++            MinecraftServer.LOGGER.fatal("Current thread: " + Thread.currentThread() + " is touching the neighbour chunk count asynchronously!", new Throwable());
++            throw new IllegalStateException(); // we log just in case some plugin decides to ignore this.
++        }
++        this.throwables.add(new Throwable("Decrement from " + this.D + " to " + (this.D - 1)));
+         --this.D;
+         if (this.D < 0) {
++            MinecraftServer.LOGGER.fatal("Neighbour count is out of sync! Dumping changes:");
++            for (Throwable throwable : this.throwables) {
++                MinecraftServer.LOGGER.fatal("", throwable);
++            }
+             throw new RuntimeException("Error while removing chunk from cache. Not enough neighbors");
+         }
+     }
+-- 
+2.22.0
+
