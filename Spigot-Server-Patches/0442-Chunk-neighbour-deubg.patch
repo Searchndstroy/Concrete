@@ -1,11 +1,11 @@
-From 90107bb1cc39f995f7fae7262b7d1a6929e91a76 Mon Sep 17 00:00:00 2001
+From ec1ebac629a1ccb3646760ac8a479c2fd55f44ef Mon Sep 17 00:00:00 2001
 From: Spottedleaf <Spottedleaf@users.noreply.github.com>
 Date: Sat, 6 Jul 2019 14:03:12 -0700
 Subject: [PATCH] Chunk neighbour deubg
 
 
 diff --git a/src/main/java/net/minecraft/server/Chunk.java b/src/main/java/net/minecraft/server/Chunk.java
-index d1556ec338..ef1aaf0f27 100644
+index d1556ec338..0f1ae00a0a 100644
 --- a/src/main/java/net/minecraft/server/Chunk.java
 +++ b/src/main/java/net/minecraft/server/Chunk.java
 @@ -1489,9 +1489,20 @@ public class Chunk implements IChunkAccess {
@@ -53,17 +53,44 @@ index d1556ec338..ef1aaf0f27 100644
  
 +    @Override
 +    public String toString() {
-+        return "(" + this.x + ", " + this.z + ") hash:" + this.hashCode();
++        return "(" + this.locX + ", " + this.locZ + ") hash:" + this.hashCode();
 +    }
 +
      public boolean J() {
          return this.D == 8;
      }
 diff --git a/src/main/java/net/minecraft/server/ChunkMap.java b/src/main/java/net/minecraft/server/ChunkMap.java
-index 154ab09e0c..8f43964cab 100644
+index 154ab09e0c..7a0e62e630 100644
 --- a/src/main/java/net/minecraft/server/ChunkMap.java
 +++ b/src/main/java/net/minecraft/server/ChunkMap.java
-@@ -34,8 +34,8 @@ public class ChunkMap extends Long2ObjectOpenHashMap<Chunk> {
+@@ -1,6 +1,7 @@
+ package net.minecraft.server;
+ 
+ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
++import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+ import java.util.Map;
+ import org.apache.logging.log4j.LogManager;
+ import org.apache.logging.log4j.Logger;
+@@ -9,6 +10,8 @@ public class ChunkMap extends Long2ObjectOpenHashMap<Chunk> {
+ 
+     private static final Logger a = LogManager.getLogger();
+ 
++    private final ObjectOpenHashSet<Chunk> chunkSet = new ObjectOpenHashSet<>();
++
+     public ChunkMap(int i) {
+         super(i);
+     }
+@@ -22,6 +25,9 @@ public class ChunkMap extends Long2ObjectOpenHashMap<Chunk> {
+         synchronized (this) {
+             // synchronize so any async gets are safe
+             chunk1 = (Chunk) super.put(i, chunk);
++            if (!chunkSet.add(chunk1)) {
++                MinecraftServer.LOGGER.fatal("Chunk neighbour debug: Double adding chunk reference to chunk map! Report this", new Throwable());
++            }
+         }
+         if (chunk1 == null) { // Paper - we should never be overwriting chunks
+         // Paper end
+@@ -34,8 +40,8 @@ public class ChunkMap extends Long2ObjectOpenHashMap<Chunk> {
                      Chunk chunk2 = (Chunk) super.get(l);  // Paper - use super to avoid polluting last access cache
  
                      if (chunk2 != null) {
@@ -74,7 +101,15 @@ index 154ab09e0c..8f43964cab 100644
                      }
                  }
              }
-@@ -97,7 +97,7 @@ public class ChunkMap extends Long2ObjectOpenHashMap<Chunk> {
+@@ -86,6 +92,7 @@ public class ChunkMap extends Long2ObjectOpenHashMap<Chunk> {
+         synchronized (this) {
+             // synchronize so any async gets are safe
+             chunk = super.remove(i);
++            chunkSet.remove(chunk);
+         }
+         if (chunk != null) { // Paper - don't decrement if we didn't remove anything
+         // Paper end
+@@ -97,7 +104,7 @@ public class ChunkMap extends Long2ObjectOpenHashMap<Chunk> {
                      Chunk chunk1 = (Chunk) super.get(ChunkCoordIntPair.a(j, k)); // Paper - use super to avoid polluting last access cache
  
                      if (chunk1 != null) {
