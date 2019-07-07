@@ -1,4 +1,4 @@
-From ec1ebac629a1ccb3646760ac8a479c2fd55f44ef Mon Sep 17 00:00:00 2001
+From 2ac3649b6701a48f0a8fa90b71a0dee64ed20d70 Mon Sep 17 00:00:00 2001
 From: Spottedleaf <Spottedleaf@users.noreply.github.com>
 Date: Sat, 6 Jul 2019 14:03:12 -0700
 Subject: [PATCH] Chunk neighbour deubg
@@ -60,7 +60,7 @@ index d1556ec338..0f1ae00a0a 100644
          return this.D == 8;
      }
 diff --git a/src/main/java/net/minecraft/server/ChunkMap.java b/src/main/java/net/minecraft/server/ChunkMap.java
-index 154ab09e0c..7a0e62e630 100644
+index 154ab09e0c..0cf1b20621 100644
 --- a/src/main/java/net/minecraft/server/ChunkMap.java
 +++ b/src/main/java/net/minecraft/server/ChunkMap.java
 @@ -1,6 +1,7 @@
@@ -84,8 +84,8 @@ index 154ab09e0c..7a0e62e630 100644
          synchronized (this) {
              // synchronize so any async gets are safe
              chunk1 = (Chunk) super.put(i, chunk);
-+            if (!chunkSet.add(chunk1)) {
-+                MinecraftServer.LOGGER.fatal("Chunk neighbour debug: Double adding chunk reference to chunk map! Report this", new Throwable());
++            if (!chunkSet.add(chunk)) {
++                MinecraftServer.LOGGER.fatal("Chunk neighbour debug: Double adding chunk reference to chunk map! Chunk: " + chunk + ", report this", new Throwable());
 +            }
          }
          if (chunk1 == null) { // Paper - we should never be overwriting chunks
