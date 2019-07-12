@@ -1,4 +1,4 @@
-From c20e9bc0f8c7d5f31eb189806fef214078255831 Mon Sep 17 00:00:00 2001
+From 4b09246872f5a380b3397c175f8cfbe2485005ef Mon Sep 17 00:00:00 2001
 From: Aikar <aikar@aikar.co>
 Date: Tue, 23 Oct 2018 20:25:05 -0400
 Subject: [PATCH] Don't sleep after profile lookups if not needed
