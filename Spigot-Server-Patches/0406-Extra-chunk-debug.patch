@@ -1,0 +1,208 @@
+From 505d4b56984bcf9170361e7dfab96e625c32a6eb Mon Sep 17 00:00:00 2001
+From: Spottedleaf <Spottedleaf@users.noreply.github.com>
+Date: Thu, 11 Jul 2019 21:07:51 -0700
+Subject: [PATCH] Extra chunk debug
+
+
+diff --git a/src/main/java/com/destroystokyo/paper/PaperCommand.java b/src/main/java/com/destroystokyo/paper/PaperCommand.java
+index 8db92edc36..84281156bb 100644
+--- a/src/main/java/com/destroystokyo/paper/PaperCommand.java
++++ b/src/main/java/com/destroystokyo/paper/PaperCommand.java
+@@ -216,6 +216,11 @@ public class PaperCommand extends Command {
+                     sender.sendMessage(ChatColor.RED + "Use /paper debug chunks to dump loaded chunk information to a file");
+                     break;
+                 }
++                if (args.length >= 3 && args[2].toLowerCase(Locale.ENGLISH).equals("start")) {
++                    MCUtil.enableExtraTicketDebug = true;
++                    sender.sendMessage(ChatColor.BLUE + "Recording addition debug info. Enter '/paper debug chunks' to complete the debug session");
++                    break;
++                }
+                 File file = new File(new File(new File("."), "debug"),
+                     "chunks-" + DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss").format(LocalDateTime.now()) + ".txt");
+                 sender.sendMessage(ChatColor.GREEN + "Writing chunk information dump to " + file.toString());
+diff --git a/src/main/java/net/minecraft/server/ChunkMapDistance.java b/src/main/java/net/minecraft/server/ChunkMapDistance.java
+index d72eacaeca..9d07415d79 100644
+--- a/src/main/java/net/minecraft/server/ChunkMapDistance.java
++++ b/src/main/java/net/minecraft/server/ChunkMapDistance.java
+@@ -44,6 +44,8 @@ public abstract class ChunkMapDistance {
+     private final Executor m;
+     private long currentTick;
+ 
++    public final java.util.List<MCUtil.TicketDifference> ticketDebug = new java.util.ArrayList<>(); // Paper - ticket debug
++
+     protected ChunkMapDistance(Executor executor, Executor executor1) {
+         ThreadedMailbox<Runnable> threadedmailbox = ThreadedMailbox.a(executor1, "player ticket throttler");
+         ChunkTaskQueueSorter chunktaskqueuesorter = new ChunkTaskQueueSorter(ImmutableList.of(threadedmailbox), executor, 15);
+@@ -62,7 +64,14 @@ public abstract class ChunkMapDistance {
+             Entry<ObjectSortedSet<Ticket<?>>> entry = (Entry) objectiterator.next();
+ 
+             if ((entry.getValue()).removeIf((ticket) -> { // Craftbukkit - decompile error
+-                return ticket.a(this.currentTick);
++                // Paper start - Ticket debug
++                boolean ret = ticket.a(this.currentTick);
++                if (ret && MCUtil.enableExtraTicketDebug && ticket.getTicketType() == TicketType.PLAYER) {
++                    ChunkMapDistance.this.ticketDebug.add(new MCUtil.TicketDifference(new Throwable(),
++                        ChunkMapDistance.this.currentTick, false, "purgeTickets call", ticket));
++                }
++                return ret;
++                // Paper end
+             })) {
+                 this.e.b(entry.getLongKey(), this.a((ObjectSortedSet) entry.getValue()), false);
+             }
+@@ -153,6 +162,12 @@ public abstract class ChunkMapDistance {
+         boolean ret = false; // CraftBukkit
+         if (objectsortedset.add(ticket)) {
+             ret = true; // CraftBukkit
++            // Paper start - ticket debug
++            if (MCUtil.enableExtraTicketDebug && ticket.getTicketType() == TicketType.PLAYER) {
++                ChunkMapDistance.this.ticketDebug.add(new MCUtil.TicketDifference(new Throwable(),
++                    ChunkMapDistance.this.currentTick, true, "addTicket call", ticket));
++            }
++            // Paper end
+         }
+ 
+         if (ticket.b() < j) {
+@@ -168,6 +183,12 @@ public abstract class ChunkMapDistance {
+         boolean removed = false; // CraftBukkit
+         if (objectsortedset.remove(ticket)) {
+             removed = true; // CraftBukkit
++            // Paper start - ticket debug
++            if (MCUtil.enableExtraTicketDebug && ticket.getTicketType() == TicketType.PLAYER) {
++                ChunkMapDistance.this.ticketDebug.add(new MCUtil.TicketDifference(new Throwable(),
++                    ChunkMapDistance.this.currentTick, false, "removeTicket call", ticket));
++            }
++            // Paper end
+         }
+ 
+         if (objectsortedset.isEmpty()) {
+@@ -368,6 +389,10 @@ public abstract class ChunkMapDistance {
+                         ChunkMapDistance.this.m.execute(() -> {
+                             // Paper start - Fix MC-154214
+                             if (!this.inRange(this.getNearestDistanceFromPlayerMap().get(chunkPosition))) {
++                                if (MCUtil.enableExtraTicketDebug) {
++                                    ChunkMapDistance.this.ticketDebug.add(new MCUtil.TicketDifference(new Throwable(),
++                                        ChunkMapDistance.this.currentTick, false, "Out of range - MC-154214", ticket));
++                                }
+                                 return;
+                             }
+                             // Paper end
+diff --git a/src/main/java/net/minecraft/server/MCUtil.java b/src/main/java/net/minecraft/server/MCUtil.java
+index 23d1935dd5..b67ed767f0 100644
+--- a/src/main/java/net/minecraft/server/MCUtil.java
++++ b/src/main/java/net/minecraft/server/MCUtil.java
+@@ -377,7 +377,38 @@ public final class MCUtil {
+         return null; // unloaded
+     }
+ 
++    public static boolean enableExtraTicketDebug;
++
++    public static final class TicketDifference {
++
++        public final Throwable stacktracke;
++        public final long modifiedTick;
++        public final boolean addition;
++        public final String notes;
++        public final Ticket<?> ticket;
++
++        public TicketDifference(final Throwable throwable, final long modifiedTick, final boolean addition, final String notes,
++                                final Ticket<?> ticket) {
++            this.stacktracke = throwable;
++            this.modifiedTick = modifiedTick;
++            this.addition = addition;
++            this.notes = notes;
++            this.ticket = ticket;
++        }
++    }
++
++    private static JsonObject getTicketJson(Ticket<?> ticket) {
++        JsonObject ticketData = new JsonObject();
++        ticketData.addProperty("ticket-type", ticket.getTicketType().toString());
++        ticketData.addProperty("ticket-level", ticket.getTicketLevel());
++        ticketData.addProperty("object-reason", String.valueOf(ticket.getObjectReason()));
++        ticketData.addProperty("add-tick", ticket.getCreationTick());
++        return ticketData;
++    }
++
++
+     public static void dumpChunks(File file) throws IOException {
++        enableExtraTicketDebug = false;
+         file.getParentFile().mkdirs();
+         file.createNewFile();
+         /*
+@@ -396,6 +427,7 @@ public final class MCUtil {
+          *    -verified-fully-loaded-chunks:<int>
+          *    -players:<array of player>
+          *    -chunk-data:<array of chunks>
++         *    -extra-info:<array of info>
+          *
+          * Player format:
+          *  -name:<string>
+@@ -418,6 +450,13 @@ public final class MCUtil {
+          *  -ticket-level:<int>
+          *  -add-tick:<long>
+          *  -object-reason:<string> // This depends on the type of ticket. ie POST_TELEPORT -> entity id
++         *
++         * Extra info format:
++         *  -modified-in-tick:<integer>
++         *  -type:<"remove"/"addition">
++         *  -notes:<string>
++         *  -ticket:<ticket>
++         *  -stacktrace:<array of string>
+          */
+         List<org.bukkit.World> worlds = org.bukkit.Bukkit.getWorlds();
+         JsonObject data = new JsonObject();
+@@ -496,14 +535,7 @@ public final class MCUtil {
+ 
+                 if (tickets != null) {
+                     for (Ticket<?> ticket : tickets) {
+-                        JsonObject ticketData = new JsonObject();
+-
+-                        ticketData.addProperty("ticket-type", ticket.getTicketType().toString());
+-                        ticketData.addProperty("ticket-level", ticket.getTicketLevel());
+-                        ticketData.addProperty("object-reason", String.valueOf(ticket.getObjectReason()));
+-                        ticketData.addProperty("add-tick", ticket.getCreationTick());
+-
+-                        ticketsData.add(ticketData);
++                        ticketsData.add(getTicketJson(ticket));
+                     }
+                 }
+ 
+@@ -513,6 +545,35 @@ public final class MCUtil {
+ 
+ 
+             worldData.add("chunk-data", chunksData);
++
++            JsonArray extraInfoArray = new JsonArray();
++
++            List<MCUtil.TicketDifference> ticketDifferences = chunkMapDistance.ticketDebug;
++
++            for (MCUtil.TicketDifference difference : ticketDifferences) {
++                JsonObject extraInfo = new JsonObject();
++
++                extraInfo.addProperty("modified-in-tick", difference.modifiedTick);
++                extraInfo.addProperty("type", difference.addition ? "addition" : "remove");
++                extraInfo.addProperty("notes", difference.notes);
++                extraInfo.add("ticket", getTicketJson(difference.ticket));
++
++                JsonArray stacktrace = new JsonArray();
++
++                for (StackTraceElement element : difference.stacktracke.getStackTrace()) {
++                    stacktrace.add(String.valueOf(element));
++                }
++
++                extraInfo.add("stacktrace", stacktrace);
++
++                extraInfoArray.add(extraInfo);
++            }
++
++            worldData.add("extra-info", extraInfoArray);
++
++            ticketDifferences.clear();
++            ((ArrayList)ticketDifferences).trimToSize();
++
+             worldsData.add(worldData);
+         }
+ 
+-- 
+2.22.0
+
