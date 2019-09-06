@@ -1,0 +1,95 @@
+From e5442498ea93511b859138770f1a87e79acceb94 Mon Sep 17 00:00:00 2001
+From: Spottedleaf <Spottedleaf@users.noreply.github.com>
+Date: Fri, 6 Sep 2019 10:46:38 -0700
+Subject: [PATCH] Fix teleporting through chunks
+
+Not correctly checking collision
+
+diff --git a/src/main/java/net/minecraft/server/PlayerConnection.java b/src/main/java/net/minecraft/server/PlayerConnection.java
+index ae17cdf234..48bba0bfd8 100644
+--- a/src/main/java/net/minecraft/server/PlayerConnection.java
++++ b/src/main/java/net/minecraft/server/PlayerConnection.java
+@@ -998,7 +998,7 @@ public class PlayerConnection implements PacketListenerPlayIn {
+                                 }
+                             }
+ 
+-                            boolean flag = this.a((IWorldReader) worldserver);
++                            boolean flag = this.a((IWorldReader) worldserver); // Paper - diff on change, should be getCubes in old pos
+ 
+                             d7 = d4 - this.o;
+                             d8 = d5 - this.p;
+@@ -1056,12 +1056,69 @@ public class PlayerConnection implements PacketListenerPlayIn {
+                             this.player.setLocation(d4, d5, d6, f, f1);
+                             this.player.checkMovement(this.player.locX - d0, this.player.locY - d1, this.player.locZ - d2);
+                             if (!this.player.noclip && !this.player.isSleeping()) {
+-                                boolean flag2 = this.a((IWorldReader) worldserver);
++                                boolean flag2 = this.a((IWorldReader) worldserver); // Paper - diff on change, should be getCubes in new pos
+ 
+                                 if (flag && (flag1 || !flag2)) {
+-                                    this.a(d0, d1, d2, f, f1);
++                                    this.a(d0, d1, d2, f, f1); // Paper - diff on change, should be send to prev pos
+                                     return;
+                                 }
++
++                                // Paper start
++                                // flag = no cubes in old place
++                                // flag1 = moved wrongly
++                                // flag2 = no cubes in new place
++                                if (!flag && !flag2) {
++                                    // if we're still in a block...
++                                    // what we REALLY want to prevent is to FALL through another block
++                                    double nextX = this.player.locX;
++                                    double nextY = this.player.locY;
++                                    double nextZ = this.player.locZ;
++
++                                    if ((long)Math.floor(nextX) != (long)Math.floor(prevX) || (long)Math.floor(nextZ) != (long)Math.floor(prevZ)) {
++                                        // check distance from center of current block
++                                        double currBlockX = Math.floor(prevX) + 0.5;
++                                        double currBlockZ = Math.floor(prevZ) + 0.5;
++
++                                        if (Math.abs(currBlockX - nextX) > 1.0 || Math.abs(currBlockZ - nextZ) > 1.0) {
++                                            this.a(d0, d1, d2, f, f1);
++                                            return;
++                                        }
++                                    }
++
++                                    if (Math.abs(Math.floor(prevY) - Math.floor(nextY)) > 1) {
++                                        // ... client doesn't move like this
++                                        this.a(d0, d1, d2, f, f1);
++                                        return;
++                                    }
++
++                                    if (prevY != nextY) {
++                                        // we can fall through blocks if the bottom one will let us, or go through up one if
++                                        // the above one lets us
++
++                                        AxisAlignedBB playerBox = this.player.getBoundingBox();
++                                        AxisAlignedBB box;
++
++                                        if (nextY > prevY) {
++                                            AxisAlignedBB shrunkBox = playerBox.shrink(1.0e-5f);
++                                            box = new AxisAlignedBB(shrunkBox.minX, Math.floor(playerBox.maxY) + 1, shrunkBox.minZ,
++                                                shrunkBox.maxX, (nextY - prevY) + (Math.floor(playerBox.maxY) + 1), shrunkBox.maxZ);
++                                        } else if (Math.floor(nextY) != Math.floor(prevY)) {
++                                            box = new AxisAlignedBB(playerBox.minX, playerBox.minY, playerBox.minZ,
++                                                playerBox.maxX, nextY, playerBox.maxZ).shrink(1.0e-5f);
++                                        } else {
++                                            box = null; // avoid if we're already in the bottom block
++                                        }
++
++
++                                        if (box != null && !worldserver.getCubes(null, box)) {
++                                            // it will not let us
++                                            this.a(d0, d1, d2, f, f1);
++                                            return;
++                                        }
++                                    }
++
++                                }
++                                // Paper end
+                             }
+ 
+                             // CraftBukkit start - fire PlayerMoveEvent
+-- 
+2.22.1
+
